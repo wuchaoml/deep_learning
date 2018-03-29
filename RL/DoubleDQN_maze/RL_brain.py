@@ -6,11 +6,11 @@ np.random.seed(1)
 tf.set_random_seed(1)
 
 
-class DeepQNetwork:
-    """docstring for DeepQNetwork"""
+class DoubleDeepQNetwork:
+    """docstring for DoubleDeepQNetwork"""
 
-    def __init__(self, n_actions, n_features, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9, replace_target_iter=300, memory_size=500, batch_size=32, e_greedy_increment=None, output_graph=False):
-        super(DeepQNetwork, self).__init__()
+    def __init__(self, n_actions, n_features, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9, replace_target_iter=300, memory_size=500, batch_size=32, e_greedy_increment=None, output_graph=False, double_q=True, sess=None):
+        super(DoubleDeepQNetwork, self).__init__()
         self.n_actions = n_actions
         self.n_features = n_features
         self.lr = learning_rate
@@ -31,7 +31,13 @@ class DeepQNetwork:
         self.replace_target_op = [tf.assign(t, e)
                                   for t, e in zip(t_params, e_params)]
 
-        self.sess = tf.Session()
+        self.double_q = double_q
+        if sess is None:
+            self.sess = tf.Session()
+            self.sess.run(tf.global_variables_initializer())
+        else:
+            self.sess = sess
+        # self.sess = tf.Session()
 
         if output_graph:
             tf.summary.FileWriter('logs/', self.sess.graph)
@@ -100,12 +106,24 @@ class DeepQNetwork:
 
     def choose_action(self, observation):
         observation = observation[np.newaxis, :]
-        if np.random.uniform() < self.epsilon:
-            actions_value = self.sess.run(
-                self.q_eval, feed_dict={self.s: observation})
-            action = np.argmax(actions_value)
-        else:
+        actions_value = self.sess.run(
+            self.q_eval, feed_dict={self.s: observation})
+        action = np.argmax(actions_value)
+
+        if not hasattr(self, 'q'):
+            self.q = []
+            self.running_q = 0
+        self.running_q = self.running_q * 0.09 + 0.01 * np.max(actions_value)
+        self.q.append(self.running_q)
+        if np.random.uniform() > self.epsilon:
             action = np.random.randint(0, self.n_actions)
+
+        # if np.random.uniform() < self.epsilon:
+        #     actions_value = self.sess.run(
+        #         self.q_eval, feed_dict={self.s: observation})
+        #     action = np.argmax(actions_value)
+        # else:
+        #     action = np.random.randint(0, self.n_actions)
         return action
 
     def learn(self):
@@ -129,8 +147,18 @@ class DeepQNetwork:
         batch_index = np.arange(self.batch_size, dtype=np.int32)
         eval_act_index = batch_memory[:, self.n_features].astype(int)
         reward = batch_memory[:, self.n_features + 1]
+
+        if self.double_q:
+            max_act4next = np.argmax(q_eval, axis=1)
+            selected_q_next = q_next[batch_index, max_act4next]
+        else:
+            selected_q_next = np.max(q_next, axis=1)
+
         q_target[batch_index, eval_act_index] = reward + \
-            self.gamma * np.max(q_next, axis=1)
+            self.gamma * selected_q_next
+
+        # q_target[batch_index, eval_act_index] = reward + \
+        #     self.gamma * np.max(q_next, axis=1)
 
         _, self.cost = self.sess.run([self._train_op, self.loss], feed_dict={
                                      self.s: batch_memory[:, :self.n_features],
