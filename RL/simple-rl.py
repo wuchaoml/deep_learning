@@ -9,8 +9,8 @@ ACTIONS = ['left', 'right']
 EPSILON = 0.9
 ALPHA = 0.1
 GAMMA = 0.9
-MAX_EPISODES = 1000
-FRESH_TIME = 0.0001
+MAX_EPISODES = 100
+FRESH_TIME = 0.01
 
 
 def build_q_table(n_states, actions):

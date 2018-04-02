@@ -7,9 +7,9 @@ else:
     import tkinter as tk
 
 
-UNIT = 60   # pixels
-MAZE_H = 6  # grid height
-MAZE_W = 6  # grid width
+UNIT = 40   # pixels
+MAZE_H = 4  # grid height
+MAZE_W = 4  # grid width
 
 
 class Maze(tk.Tk, object):
@@ -35,7 +35,7 @@ class Maze(tk.Tk, object):
             self.canvas.create_line(x0, y0, x1, y1)
 
         # create origin
-        origin = np.array([30, 30])
+        origin = np.array([20, 20])
 
         # hell
         hell1_center = origin + np.array([UNIT * 3, UNIT])
@@ -70,7 +70,7 @@ class Maze(tk.Tk, object):
         self.update()
         time.sleep(0.5)
         self.canvas.delete(self.rect)
-        origin = np.array([30, 30])
+        origin = np.array([20, 20])
         self.rect = self.canvas.create_rectangle(
             origin[0] - 15, origin[1] - 15,
             origin[0] + 15, origin[1] + 15,
